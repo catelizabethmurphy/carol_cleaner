@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAROL Cleaner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="carol_cleaner.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="masthead-label">Howard Center for Investigative Journalism · UMD</div>
+    <h1>CAROL <span>Cleaner</span></h1>
+    <div class="byline">Drop in raw CAROL export → clean, analysis-ready data · optionally enrich with JSON</div>
+  </div>
+</header>
+
+<main>
+  <div class="upload-row">
+    <div class="drop-zone" id="drop-zone-csv">
+      <span class="drop-icon">📋</span>
+      <div class="dz-tag" id="csv-tag">Required</div>
+      <h2>CAROL Summary CSV</h2>
+      <p>Raw export from<br><strong>data.ntsb.gov/carol-main-public/query-builder</strong></p>
+      <label class="file-btn" for="file-input-csv">Choose CSV</label>
+      <input type="file" id="file-input-csv" accept=".csv">
+      <div class="loaded-name" id="csv-loaded-name"></div>
+    </div>
+    <div class="drop-zone" id="drop-zone-json">
+      <span class="drop-icon">🔗</span>
+      <div class="dz-tag" id="json-tag">Optional</div>
+      <h2>CAROL Full JSON</h2>
+      <p>Adds priority, hazmat, most wanted,<br>keywords &amp; rec letter URL to each row</p>
+      <label class="file-btn secondary" for="file-input-json">Choose JSON</label>
+      <input type="file" id="file-input-json" accept=".json">
+      <div class="loaded-name" id="json-loaded-name"></div>
+    </div>
+  </div>
+
+  <div id="log-section">
+    <div class="log-label">Processing log</div>
+    <div id="log"></div>
+  </div>
+
+  <div id="stats-bar">
+    <div class="stat"><div class="stat-num" id="stat-rows">—</div><div class="stat-label">Total Rows</div></div>
+    <div class="stat"><div class="stat-num" id="stat-recs">—</div><div class="stat-label">Unique Recs</div></div>
+    <div class="stat"><div class="stat-num" id="stat-open">—</div><div class="stat-label">Open</div></div>
+    <div class="stat"><div class="stat-num" id="stat-closed">—</div><div class="stat-label">Closed</div></div>
+  </div>
+
+  <div id="table-section">
+    <div class="table-header">
+      <div class="table-title">Clean Data</div>
+      <div class="table-controls">
+        <input type="text" id="search" placeholder="Search any column…">
+        <select id="status-filter">
+          <option value="">All statuses</option>
+          <option value="Open">Open</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <button class="download-btn" id="download-btn">↓ Download CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span id="page-info"></span>
+      <div class="page-btns" id="page-btns"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-credit">Code by Cat Murphy · <a href="https://github.com/catelizabethmurphy/nicar26" target="_blank" rel="noopener">github.com/catelizabethmurphy/nicar26</a></div>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-srid" id="modal-srid"></div>
+        <div class="modal-title" id="modal-recipient"></div>
+      </div>
+      <button class="modal-close" id="modal-close">✕ Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-rec-text" id="modal-rec-text"></div>
+
+      <div class="modal-section-label">From CSV</div>
+      <div class="modal-grid" id="modal-grid-csv"></div>
+
+      <div class="modal-enriched" id="modal-enriched">
+        <div class="modal-section-label">From JSON</div>
+        <div class="modal-grid" id="modal-grid-json"></div>
+      </div>
+
+      <div class="modal-links" id="modal-links"></div>
+    </div>
+  </div>
+</div>
+
+<script src="carol_cleaner.js"></script>
+</body>
+</html>

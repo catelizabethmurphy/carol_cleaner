@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NTSB Safety Recommendation Cleaner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1a1a18; --paper: #f5f2eb; --accent: #c0392b;
+    --rule: #c8c0b0; --muted: #524a3f;
+    --mono: 'IBM Plex Mono', monospace; --sans: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans); min-height: 100vh; line-height: 1.6; }
+
+  header { border-bottom: 3px double var(--ink); }
+  .header-inner { max-width: 1200px; margin: 0 auto; padding: 2rem 3rem 1.5rem; }
+  .masthead-label { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+  h1 { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .byline { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); letter-spacing: 0.05em; margin-top: 0.5rem; }
+
+  main { padding: 2.5rem 3rem; max-width: 1200px; margin: 0 auto; }
+
+  /* Upload row */
+  .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+
+  .drop-zone {
+    border: 2px dashed var(--rule); padding: 2rem 1.5rem; text-align: center;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--ink); background: rgba(0,0,0,0.02); }
+  .drop-zone.loaded { border-color: #8bc34a; border-style: solid; }
+
+  .drop-icon { font-size: 2rem; margin-bottom: 0.6rem; display: block; }
+  .drop-zone h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem; }
+  .drop-zone p { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+
+  .dz-tag {
+    display: inline-block; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.15rem 0.6rem; border: 1px solid var(--rule);
+    color: var(--muted); margin-bottom: 0.6rem;
+  }
+  .drop-zone.loaded .dz-tag { border-color: #8bc34a; color: #155724; background: #d4edda; }
+
+  .file-btn {
+    display: inline-block; margin-top: 1rem; padding: 0.55rem 1.3rem;
+    background: var(--ink); color: var(--paper); font-family: var(--mono);
+    font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase;
+    cursor: pointer; border: none; transition: background 0.15s;
+  }
+  .file-btn:hover { background: var(--accent); }
+  .file-btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
+  .file-btn.secondary:hover { background: var(--ink); color: var(--paper); }
+
+  #file-input-csv, #file-input-json { display: none; }
+  .loaded-name { font-family: var(--mono); font-size: 0.75rem; color: #155724; margin-top: 0.6rem; display: none; }
+  .drop-zone.loaded .loaded-name { display: block; }
+
+  /* Log */
+  #log-section { display: none; margin-bottom: 2rem; }
+  .log-label { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .log-label::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+  #log { background: #1a1a18; color: #a8d8a8; font-family: var(--mono); font-size: 0.85rem; line-height: 1.8; padding: 1.25rem 1.5rem; overflow-y: auto; max-height: 200px; }
+  #log .step { color: #f0e68c; } #log .ok { color: #a8d8a8; } #log .info { color: #87ceeb; } #log .warn { color: #ffa07a; }
+
+  /* Stats */
+  #stats-bar { display: none; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-bottom: 2rem; }
+  .stat { background: var(--paper); padding: 1rem 1.25rem; text-align: center; }
+  .stat-num { font-family: var(--mono); font-size: 1.6rem; font-weight: 500; color: var(--accent); line-height: 1; margin-bottom: 0.3rem; }
+  .stat-label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  /* Table */
+  #table-section { display: none; }
+  .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
+  .table-title { font-size: 1rem; font-weight: 600; }
+  .table-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+  input[type="text"] { font-family: var(--mono); font-size: 0.85rem; padding: 0.5rem 0.85rem; border: 1px solid var(--rule); background: white; outline: none; width: 220px; transition: border-color 0.15s; }
+  input[type="text"]:focus { border-color: var(--ink); }
+  select { font-family: var(--mono); font-size: 0.85rem; padding: 0.5rem 0.85rem; border: 1px solid var(--rule); background: white; outline: none; cursor: pointer; }
+  .download-btn { padding: 0.5rem 1.1rem; background: var(--accent); color: white; font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border: none; transition: opacity 0.15s; }
+  .download-btn:hover { opacity: 0.85; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  thead { background: var(--ink); color: var(--paper); position: sticky; top: 0; }
+  th { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.75rem 0.95rem; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; }
+  th:hover { background: #333; }
+  th.sorted-asc::after { content: ' ↑'; color: var(--accent); }
+  th.sorted-desc::after { content: ' ↓'; color: var(--accent); }
+  td { padding: 0.65rem 0.95rem; border-bottom: 1px solid var(--rule); vertical-align: top; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
+  tr:hover td { background: rgba(192,57,43,0.05); }
+  tbody tr { cursor: pointer; }
+
+  .badge { display: inline-block; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.05em; padding: 0.2rem 0.55rem; white-space: nowrap; }
+  .badge-open     { background: #fef3cd; color: #7d5a00; border: 1px solid #f0c040; }
+  .badge-closed   { background: #d4edda; color: #155724; border: 1px solid #8bc34a; }
+  .badge-other    { background: #e8e8e8; color: #555;    border: 1px solid #ccc; }
+  .badge-urgent   { background: #fde8e8; color: #7b1a1a; border: 1px solid #e88; }
+  .badge-true     { background: #c8e6c9; color: #1b5e20; border: 1px solid #66bb6a; font-weight: 500; }
+  .badge-false    { background: #e0e0e0; color: #424242; border: 1px solid #9e9e9e; }
+
+  .pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; font-family: var(--mono); font-size: 0.8rem; color: var(--muted); flex-wrap: wrap; gap: 0.5rem; }
+  .page-btns { display: flex; gap: 0.25rem; }
+  .page-btns button { padding: 0.35rem 0.7rem; border: 1px solid var(--rule); background: var(--paper); font-family: var(--mono); font-size: 0.8rem; cursor: pointer; transition: background 0.1s; }
+  .page-btns button:hover, .page-btns button.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,26,24,0.65); z-index: 100; align-items: center; justify-content: center; padding: 2rem; backdrop-filter: blur(2px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border: 2px solid var(--ink); max-width: 800px; width: 100%; max-height: 88vh; overflow-y: auto; animation: modalIn 0.18s ease; }
+  @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  .modal-header { border-bottom: 2px solid var(--ink); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; position: sticky; top: 0; background: var(--paper); z-index: 1; }
+  .modal-srid { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.3rem; }
+  .modal-title { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
+  .modal-close { background: none; border: 1px solid var(--rule); font-family: var(--mono); font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.6rem; color: var(--muted); flex-shrink: 0; transition: border-color 0.15s, color 0.15s; }
+  .modal-close:hover { border-color: var(--ink); color: var(--ink); }
+
+  .modal-body { padding: 1.5rem; }
+  .modal-rec-text { font-size: 1rem; line-height: 1.7; border-left: 3px solid var(--accent); padding-left: 1rem; margin-bottom: 1.5rem; }
+
+  .modal-section-label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; margin-top: 2.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .modal-section-label::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+  .modal-section-label:first-child { margin-top: 0; }
+
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-bottom: 1rem; }
+  .modal-field { background: var(--paper); padding: 0.7rem 1rem; }
+  .modal-field.full-width { grid-column: 1 / -1; }
+  .modal-field-label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem; }
+  .modal-field-value { font-size: 0.92rem; line-height: 1.5; word-break: break-word; }
+
+  .modal-enriched { display: none; }
+  .modal-enriched.visible { display: block; }
+
+  .modal-links { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.25rem; }
+  .modal-link { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.4rem 0.9rem; border: 1px solid var(--ink); color: var(--ink); text-decoration: none; transition: background 0.15s, color 0.15s; }
+  .modal-link:hover { background: var(--ink); color: var(--paper); }
+
+  /* Footer */
+  footer { border-top: 3px double var(--ink); margin-top: 3rem; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; padding: 1.5rem 3rem; text-align: center; }
+  .footer-credit { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+  .footer-credit a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.15s; }
+  .footer-credit a:hover { border-bottom-color: var(--accent); }
+
+  @media (max-width: 700px) {
+    .header-inner, main { padding: 1.25rem; }
+    .footer-inner { padding: 1.25rem; }
+    .upload-row { grid-template-columns: 1fr; }
+    #stats-bar { grid-template-columns: repeat(2,1fr); }
+    td { max-width: 140px; }
+    .modal-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="masthead-label">Howard Center for Investigative Journalism · UMD</div>
+    <h1>CAROL <span>Cleaner</span></h1>
+    <div class="byline">Drop in raw CAROL export → clean, analysis-ready data · optionally enrich with JSON</div>
+  </div>
+</header>
+
+<main>
+  <div class="upload-row">
+    <div class="drop-zone" id="drop-zone-csv">
+      <span class="drop-icon">📋</span>
+      <div class="dz-tag" id="csv-tag">Required</div>
+      <h2>CAROL Summary CSV</h2>
+      <p>Raw export from<br><strong>data.ntsb.gov/carol-main-public/query-builder</strong></p>
+      <label class="file-btn" for="file-input-csv">Choose CSV</label>
+      <input type="file" id="file-input-csv" accept=".csv">
+      <div class="loaded-name" id="csv-loaded-name"></div>
+    </div>
+    <div class="drop-zone" id="drop-zone-json">
+      <span class="drop-icon">🔗</span>
+      <div class="dz-tag" id="json-tag">Optional</div>
+      <h2>CAROL Full JSON</h2>
+      <p>Adds priority, hazmat, most wanted,<br>keywords &amp; rec letter URL to each row</p>
+      <label class="file-btn secondary" for="file-input-json">Choose JSON</label>
+      <input type="file" id="file-input-json" accept=".json">
+      <div class="loaded-name" id="json-loaded-name"></div>
+    </div>
+  </div>
+
+  <div id="log-section">
+    <div class="log-label">Processing log</div>
+    <div id="log"></div>
+  </div>
+
+  <div id="stats-bar">
+    <div class="stat"><div class="stat-num" id="stat-rows">—</div><div class="stat-label">Total Rows</div></div>
+    <div class="stat"><div class="stat-num" id="stat-recs">—</div><div class="stat-label">Unique Recs</div></div>
+    <div class="stat"><div class="stat-num" id="stat-open">—</div><div class="stat-label">Open</div></div>
+    <div class="stat"><div class="stat-num" id="stat-closed">—</div><div class="stat-label">Closed</div></div>
+  </div>
+
+  <div id="table-section">
+    <div class="table-header">
+      <div class="table-title">Clean Data</div>
+      <div class="table-controls">
+        <input type="text" id="search" placeholder="Search any column…">
+        <select id="status-filter">
+          <option value="">All statuses</option>
+          <option value="Open">Open</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <button class="download-btn" id="download-btn">↓ Download CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span id="page-info"></span>
+      <div class="page-btns" id="page-btns"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-credit">Code by Cat Murphy · <a href="https://github.com/catelizabethmurphy/nicar26" target="_blank" rel="noopener">github.com/catelizabethmurphy/nicar26</a></div>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-srid" id="modal-srid"></div>
+        <div class="modal-title" id="modal-recipient"></div>
+      </div>
+      <button class="modal-close" id="modal-close">✕ Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-rec-text" id="modal-rec-text"></div>
+
+      <div class="modal-section-label">From CSV</div>
+      <div class="modal-grid" id="modal-grid-csv"></div>
+
+      <div class="modal-enriched" id="modal-enriched">
+        <div class="modal-section-label">From JSON</div>
+        <div class="modal-grid" id="modal-grid-json"></div>
+      </div>
+
+      <div class="modal-links" id="modal-links"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CSV parser ────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = []; let row = [], field = '', inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i+1];
+    if (inQuote) {
+      if (c==='"' && n==='"') { field+='"'; i++; }
+      else if (c==='"') inQuote = false;
+      else field += c;
+    } else {
+      if (c==='"') inQuote = true;
+      else if (c===',') { row.push(field); field=''; }
+      else if (c==='\n' || (c==='\r' && n==='\n')) {
+        row.push(field); field='';
+        if (row.some(f=>f!=='')) lines.push(row);
+        row=[]; if(c==='\r') i++;
+      } else field += c;
+    }
+  }
+  if (field||row.length) { row.push(field); if(row.some(f=>f!=='')) lines.push(row); }
+  return lines;
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+const logEl = document.getElementById('log');
+function log(msg, cls='ok') {
+  const d=document.createElement('div'); d.className=cls; d.textContent=msg;
+  logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let csvData=null, jsonMap=null;
+let allData=[], filteredData=[], sortCol=null, sortDir=1, currentPage=1;
+const PAGE_SIZE=50;
+
+// ── Badges ────────────────────────────────────────────────────────────────────
+function makeBadge(val, type) {
+  const s = String(val==null?'':val);
+  if (!s || s==='null'||s==='undefined') return '—';
+  let cls='badge-other';
+  if (type==='status') cls = s.toLowerCase().includes('open')?'badge-open':s.toLowerCase().includes('closed')?'badge-closed':'badge-other';
+  else if (type==='priority' && s.toLowerCase()==='urgent') cls='badge-urgent';
+  else if (type==='bool') cls = (s==='true'||s==='True')?'badge-true':'badge-false';
+  return `<span class="badge ${cls}">${s}</span>`;
+}
+
+// ── Clean CSV ─────────────────────────────────────────────────────────────────
+function cleanCSV(rawText) {
+  document.getElementById('log-section').style.display='block';
+  log('▸ Parsing CSV…','step');
+  const lines = parseCSV(rawText);
+  if (lines.length<2) { log('✗ No data found.','warn'); return null; }
+
+  const headers = lines[0].map(h=>h.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''));
+  log(`✔ Loaded ${lines.length-1} rows · ${headers.length} columns`,'ok');
+
+  let rows = lines.slice(1).map(line=>{
+    const obj={}; headers.forEach((h,i)=>{obj[h]=(line[i]||'').trim();}); return obj;
+  });
+
+  const addrKey        = headers.find(h=>h.includes('addressee'));
+  const overallStatKey = headers.find(h=>h==='overall_status'||(h.includes('overall')&&h.includes('status')));
+  const overallDateKey = headers.find(h=>h.includes('overall')&&h.includes('date'));
+
+  log('▸ Cleaning addressee_details…','step');
+  rows.forEach(r=>{ if(r[addrKey]) r[addrKey]=r[addrKey].replace(/;+\s*$/g,'').replace(/\s+/g,' ').trim(); });
+
+  log('▸ Splitting multi-recipient rows on ";"…','step');
+  const expanded=[];
+  rows.forEach(r=>{
+    const parts=r[addrKey]?r[addrKey].split(';').map(s=>s.trim()).filter(Boolean):[''];
+    parts.forEach(part=>expanded.push({...r,[addrKey]:part}));
+  });
+  log(`✔ Expanded to ${expanded.length} rows`,'ok');
+  rows=expanded;
+
+  log('▸ Splitting addressee_details on "|"…','step');
+  rows.forEach(r=>{
+    const parts=(r[addrKey]||'').split('|').map(s=>s.trim());
+    r['recipient']=parts[0]||'';
+    r['_status_raw']=parts[1]||'';
+    r['recipient_recommendation_date_closed']=parts[2]&&parts[2]!=='NA'?parts[2]:'';
+  });
+
+  log('▸ Parsing open/closed & response status…','step');
+  rows.forEach(r=>{
+    const s=r['_status_raw']||'';
+    r['recipient_recommendation_open_closed']=s.toLowerCase().includes('open')?'Open':s.toLowerCase().includes('closed')?'Closed':'';
+    r['recipient_recommendation_response_status']=s.replace(/closed/gi,'').replace(/open/gi,'').replace(/-/g,'').replace(/\s+/g,' ').trim();
+    delete r['_status_raw'];
+  });
+
+  log('▸ Dropping redundant columns…','step');
+  const drop=new Set([addrKey,overallStatKey,overallDateKey].filter(Boolean));
+  rows.forEach(r=>drop.forEach(k=>delete r[k]));
+  log(`✔ Dropped: ${[...drop].join(', ')}`,'info');
+
+  log('▸ Normalising dates to YYYY-MM-DD…','step');
+  const dateKeys=Object.keys(rows[0]||{}).filter(k=>k.includes('date'));
+  rows.forEach(r=>dateKeys.forEach(k=>{
+    if(r[k]){const d=new Date(r[k]);if(!isNaN(d))r[k]=d.toISOString().split('T')[0];}
+  }));
+
+  log(`\n✓ CSV clean — ${rows.length} rows ready.`,'ok');
+  return rows;
+}
+
+// ── Clean JSON ────────────────────────────────────────────────────────────────
+function cleanJSON(rawText) {
+  log('▸ Parsing JSON…','step');
+  let parsed;
+  try { parsed=JSON.parse(rawText); } catch(e) { log('✗ Invalid JSON: '+e.message,'warn'); return null; }
+  if (!Array.isArray(parsed)) { log('✗ Expected a JSON array.','warn'); return null; }
+
+  const KEEP=['srid','priority','priorityNum','hazmat','mostWanted','keywords','isReiterated','timesReiterated','nprm','greenSheet'];
+  const map=new Map();
+  parsed.forEach(rec=>{
+    const srid=rec.srid||rec.Srid; if(!srid) return;
+    const obj={};
+    KEEP.forEach(k=>{ if(rec[k]!==undefined&&rec[k]!==null) obj[k]=rec[k]; });
+    // snake_case rename to match R conventions
+    if(obj.priorityNum!==undefined){obj.priority_number=obj.priorityNum;delete obj.priorityNum;}
+    if(obj.mostWanted!==undefined){obj.most_wanted=obj.mostWanted;delete obj.mostWanted;}
+    if(obj.isReiterated!==undefined){obj.is_reiterated=obj.isReiterated;delete obj.isReiterated;}
+    if(obj.timesReiterated!==undefined){obj.times_reiterated=obj.timesReiterated;delete obj.timesReiterated;}
+    if(obj.greenSheet!==undefined){obj.rec_letter_url=obj.greenSheet;delete obj.greenSheet;}
+    map.set(srid, obj);
+  });
+  log(`✔ JSON parsed — ${map.size} unique srids.`,'ok');
+  return map;
+}
+
+// ── Join ──────────────────────────────────────────────────────────────────────
+function joinData(csvRows, jMap) {
+  if (!jMap) return csvRows;
+  log('▸ Joining CSV + JSON on srid…','step');
+  let matched=0;
+  const joined=csvRows.map(r=>{
+    const e=jMap.get(r['srid']);
+    if(e){matched++;return{...r,_json:e};}
+    return r;
+  });
+  log(`✔ ${matched} of ${csvRows.length} rows matched`,'ok');
+  return joined;
+}
+
+// ── Build / rebuild ───────────────────────────────────────────────────────────
+function buildAllData() {
+  if (!csvData) return;
+  document.getElementById('log-section').style.display='block';
+  allData=joinData(csvData,jsonMap);
+  filteredData=[...allData];
+  updateStats(allData);
+  document.getElementById('table-section').style.display='block';
+  renderTable();
+}
+
+// ── Columns ───────────────────────────────────────────────────────────────────
+const PRIORITY_COLS=['srid','reportno','mkey','ntsb_no','recipient','recipient_recommendation_open_closed','recipient_recommendation_response_status','recipient_recommendation_date_closed','date_issued','event_date','city','state','recommendation'];
+const SKIP_TABLE=new Set(['_json','abstract','sr_url','srurl','accidentreporturl','accident_report_url']);
+const LINK_COLS=['sr_url','accident_report_url','srurl','accidentreporturl','rec_letter_url'];
+const SKIP_MODAL=new Set(['recommendation','abstract','srid','recipient',...LINK_COLS]);
+const BOOL_KEYS=new Set(['hazmat','most_wanted','is_reiterated','nprm','is_multiple_recipient','ismultiplerecipient']);
+const JSON_PRIORITY=['priority','priority_number','hazmat','most_wanted','is_reiterated','times_reiterated','nprm'];
+
+function getDisplayCols(rows) {
+  if (!rows.length) return [];
+  const all=Object.keys(rows[0]).filter(k=>!SKIP_TABLE.has(k));
+  const pri=PRIORITY_COLS.filter(c=>all.includes(c));
+  const rest=all.filter(c=>!PRIORITY_COLS.includes(c));
+  
+  // Add JSON columns if any row has _json data
+  let jsonCols=[];
+  if (rows.some(r=>r._json)) {
+    const jsonKeys=new Set();
+    rows.forEach(r=>{ if(r._json) Object.keys(r._json).forEach(k=>{ if(!LINK_COLS.includes(k)&&k!=='srid') jsonKeys.add(k); }); });
+    const jsonPri=JSON_PRIORITY.filter(c=>jsonKeys.has(c));
+    const jsonRest=[...jsonKeys].filter(c=>!JSON_PRIORITY.includes(c));
+    jsonCols=[...jsonPri,...jsonRest];
+  }
+  
+  return [...pri,...rest,...jsonCols];
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function getColDisplayName(col) {
+  const displayNames = {
+    'recipient_recommendation_open_closed': 'open or closed',
+    'recipient_recommendation_response_status': 'response status',
+    'recipient_recommendation_date_closed': 'date closed',
+    'is_multiple_recipient': 'multiple recipients',
+    'ismultiplerecipient': 'multiple recipients'
+  };
+  return displayNames[col] || col.replace(/_/g,' ');
+}
+
+function renderTable() {
+  const cols=getDisplayCols(filteredData);
+  const head=document.getElementById('table-head');
+  const body=document.getElementById('table-body');
+
+  head.innerHTML='<tr>'+cols.map(c=>{
+    const cls=c===sortCol?(sortDir===1?'sorted-asc':'sorted-desc'):'';
+    return `<th class="${cls}" data-col="${c}">${getColDisplayName(c)}</th>`;
+  }).join('')+'</tr>';
+
+  head.querySelectorAll('th').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const col=th.dataset.col;
+      if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;}
+      filteredData.sort((a,b)=>(a[col]||'').localeCompare(b[col]||'',undefined,{numeric:true})*sortDir);
+      currentPage=1; renderTable();
+    });
+  });
+
+  const start=(currentPage-1)*PAGE_SIZE;
+  const pageRows=filteredData.slice(start,start+PAGE_SIZE);
+
+  body.innerHTML=pageRows.map((row,i)=>`<tr data-idx="${start+i}">`+cols.map(c=>{
+    let val=(row[c]!==undefined && row[c]!=='')?row[c]:(row._json?row._json[c]:'');
+    if(c==='recipient_recommendation_open_closed') val=makeBadge(val,'status');
+    else if(c==='recipient_recommendation_response_status'&&val) val=makeBadge(val,'other');
+    else if(c==='priority'&&val) val=makeBadge(val,'priority');
+    else if(BOOL_KEYS.has(c)) val=makeBadge(val,'bool');
+    else val=String(val||'').replace(/</g,'&lt;');
+    const titleVal=(row[c]!==undefined && row[c]!=='')?row[c]:(row._json?row._json[c]:'');
+    return `<td title="${String(titleVal||'').replace(/"/g,'&quot;')}">${val}</td>`;
+  }).join('')+'</tr>').join('');
+
+  body.querySelectorAll('tr').forEach(tr=>{
+    tr.addEventListener('click',()=>openModal(filteredData[+tr.dataset.idx]));
+  });
+
+  const total=filteredData.length, pages=Math.ceil(total/PAGE_SIZE);
+  document.getElementById('page-info').textContent=`Showing ${start+1}–${Math.min(start+PAGE_SIZE,total)} of ${total.toLocaleString()} rows`;
+
+  const btns=document.getElementById('page-btns');
+  const show=[1];
+  if(currentPage>3) show.push('…');
+  for(let p=Math.max(2,currentPage-1);p<=Math.min(pages-1,currentPage+1);p++) show.push(p);
+  if(currentPage<pages-2) show.push('…');
+  if(pages>1) show.push(pages);
+  btns.innerHTML=show.map(p=>p==='…'?`<button disabled>…</button>`:`<button class="${p===currentPage?'active':''}" data-p="${p}">${p}</button>`).join('');
+  btns.querySelectorAll('button[data-p]').forEach(b=>b.addEventListener('click',()=>{currentPage=+b.dataset.p;renderTable();}));
+}
+
+function applyFilters() {
+  const q=document.getElementById('search').value.toLowerCase();
+  const sf=document.getElementById('status-filter').value;
+  filteredData=allData.filter(r=>{
+    const matchQ=!q||Object.entries(r).some(([k,v])=>k!=='_json'&&String(v).toLowerCase().includes(q));
+    const matchS=!sf||(r['recipient_recommendation_open_closed']||'')===sf;
+    return matchQ&&matchS;
+  });
+  currentPage=1; renderTable();
+}
+
+function updateStats(rows) {
+  const open=rows.filter(r=>r['recipient_recommendation_open_closed']==='Open').length;
+  const closed=rows.filter(r=>r['recipient_recommendation_open_closed']==='Closed').length;
+  const uniq=new Set(rows.map(r=>r['srid'])).size;
+  document.getElementById('stat-rows').textContent=rows.length.toLocaleString();
+  document.getElementById('stat-recs').textContent=uniq.toLocaleString();
+  document.getElementById('stat-open').textContent=open.toLocaleString();
+  document.getElementById('stat-closed').textContent=closed.toLocaleString();
+  document.getElementById('stats-bar').style.display='grid';
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function fieldHtml(k, v) {
+  let display;
+  const s=String(v==null?'':v);
+  if (k==='recipient_recommendation_open_closed') display=makeBadge(s,'status');
+  else if (k==='recipient_recommendation_response_status') display=makeBadge(s,'other');
+  else if (BOOL_KEYS.has(k)) display=makeBadge(s,'bool');
+  else if (k==='priority') display=makeBadge(s,'priority');
+  else display=`<span>${s?s.replace(/</g,'&lt;'):'—'}</span>`;
+  return `<div class="modal-field"><div class="modal-field-label">${getColDisplayName(k)}</div><div class="modal-field-value">${display}</div></div>`;
+}
+
+function openModal(row) {
+  if (!row) return;
+  document.getElementById('modal-srid').textContent=row['srid']||'';
+  document.getElementById('modal-recipient').textContent=row['recipient']||'Recommendation Detail';
+
+  const recText=row['recommendation']||row['abstract']||'';
+  const recEl=document.getElementById('modal-rec-text');
+  recEl.textContent=recText; recEl.style.display=recText?'block':'none';
+
+  // CSV fields
+  const csvKeys=Object.keys(row).filter(k=>!SKIP_MODAL.has(k)&&k!=='_json');
+  document.getElementById('modal-grid-csv').innerHTML=csvKeys.map(k=>fieldHtml(k,row[k])).join('');
+
+  // JSON enrichment
+  const enrichEl=document.getElementById('modal-enriched');
+  const json=row['_json'];
+  if (json) {
+    const jKeys=Object.keys(json).filter(k=>k!=='srid'&&!LINK_COLS.includes(k));
+    document.getElementById('modal-grid-json').innerHTML=jKeys.map(k=>fieldHtml(k,json[k])).join('');
+    enrichEl.classList.add('visible');
+  } else {
+    enrichEl.classList.remove('visible');
+  }
+
+  // Links from both CSV and JSON
+  const allLinks=[...LINK_COLS.map(k=>({k,v:row[k]})),...(json?LINK_COLS.map(k=>({k,v:json[k]})):[])]
+    .filter(({v})=>v);
+  const seen=new Set();
+  document.getElementById('modal-links').innerHTML=allLinks
+    .filter(({v})=>{if(seen.has(v))return false;seen.add(v);return true;})
+    .map(({k,v})=>{
+      const label=k.includes('accident')?'↗ Investigation Report':k.includes('rec_letter')?'↗ Rec Letter (PDF)':'↗ NTSB Safety Rec';
+      return `<a class="modal-link" href="${v}" target="_blank" rel="noopener">${label}</a>`;
+    }).join('');
+
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.getElementById('modal-close').addEventListener('click',closeModal);
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── File handlers ─────────────────────────────────────────────────────────────
+function handleCSV(file) {
+  if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const cleaned=cleanCSV(e.target.result);
+    if (!cleaned) return;
+    csvData=cleaned;
+    document.getElementById('drop-zone-csv').classList.add('loaded');
+    document.getElementById('csv-tag').textContent='✓ Loaded';
+    document.getElementById('csv-loaded-name').textContent='✓ '+file.name;
+    buildAllData();
+  };
+  reader.readAsText(file);
+}
+
+function handleJSON(file) {
+  if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('log-section').style.display='block';
+    const map=cleanJSON(e.target.result);
+    if (!map) return;
+    jsonMap=map;
+    document.getElementById('drop-zone-json').classList.add('loaded');
+    document.getElementById('json-tag').textContent='✓ Loaded';
+    document.getElementById('json-loaded-name').textContent='✓ '+file.name;
+    if (csvData) buildAllData();
+    else log('  Waiting for CSV before joining…','info');
+  };
+  reader.readAsText(file);
+}
+
+const dzCSV=document.getElementById('drop-zone-csv');
+document.getElementById('file-input-csv').addEventListener('change',e=>handleCSV(e.target.files[0]));
+dzCSV.addEventListener('dragover',e=>{e.preventDefault();dzCSV.classList.add('dragover');});
+dzCSV.addEventListener('dragleave',()=>dzCSV.classList.remove('dragover'));
+dzCSV.addEventListener('drop',e=>{e.preventDefault();dzCSV.classList.remove('dragover');handleCSV(e.dataTransfer.files[0]);});
+
+const dzJSON=document.getElementById('drop-zone-json');
+document.getElementById('file-input-json').addEventListener('change',e=>handleJSON(e.target.files[0]));
+dzJSON.addEventListener('dragover',e=>{e.preventDefault();dzJSON.classList.add('dragover');});
+dzJSON.addEventListener('dragleave',()=>dzJSON.classList.remove('dragover'));
+dzJSON.addEventListener('drop',e=>{e.preventDefault();dzJSON.classList.remove('dragover');handleJSON(e.dataTransfer.files[0]);});
+
+document.getElementById('search').addEventListener('input',applyFilters);
+document.getElementById('status-filter').addEventListener('change',applyFilters);
+
+document.getElementById('download-btn').addEventListener('click',()=>{
+  if (!filteredData.length) return;
+  // Get all possible columns from allData to ensure we include all JSON fields
+  const cols=getDisplayCols(allData.length ? allData : filteredData);
+  const esc=v=>`"${String(v!=null?v:'').replace(/"/g,'""')}"`;
+  const csv=[cols.map(esc).join(','),...filteredData.map(r=>cols.map(c=>{
+    let val=(r[c]!==undefined && r[c]!=='')?r[c]:(r._json?r._json[c]:'');
+    return esc(val);
+  }).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='clean_rail_safety_recs.csv';
+  a.click();
+});
+</script>
+</body>
+</html>
