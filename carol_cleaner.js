@@ -426,3 +426,30 @@ document.getElementById('download-btn').addEventListener('click',()=>{
   a.download=`safety_recs_cleaned_${ts}.csv`;
   a.click();
 });
+
+document.getElementById('clipboard-btn').addEventListener('click',async ()=>{
+  if (!filteredData.length) return;
+  const btn=document.getElementById('clipboard-btn');
+  const orig=btn.textContent;
+  
+  // Generate TSV data (tab-separated values for easy pasting into spreadsheets)
+  const cols=getDisplayCols(allData.length ? allData : filteredData);
+  const escTSV=v=>String(v!=null?v:'').replace(/\t/g,' ').replace(/\n/g,' ').replace(/\r/g,'');
+  const tsv=[cols.map(escTSV).join('\t'),...filteredData.map(r=>cols.map(c=>{
+    let val=(r[c]!==undefined && r[c]!=='')?r[c]:(r._json?r._json[c]:'');
+    return escTSV(val);
+  }).join('\t'))].join('\n');
+  
+  // Copy to clipboard
+  try {
+    await navigator.clipboard.writeText(tsv);
+    btn.textContent='✓ Copied!';
+    btn.style.background='#495057';
+    setTimeout(()=>{
+      btn.textContent=orig;
+      btn.style.background='#6c757d';
+    },2000);
+  } catch(e) {
+    alert('Could not copy to clipboard. Please use Download CSV instead.');
+  }
+});

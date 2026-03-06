@@ -65,15 +65,16 @@ main { padding: 2.5rem 3rem; max-width: 1200px; margin: 0 auto; }
 
 /* Table */
 #table-section { display: none; }
-.table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
-.table-title { font-size: 1rem; font-weight: 600; }
-.table-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
+.table-controls-left, .table-controls-right { display: flex; gap: 0.5rem; align-items: center; }
 
 input[type="text"] { font-family: var(--mono); font-size: 0.85rem; padding: 0.5rem 0.85rem; border: 1px solid var(--rule); background: white; outline: none; width: 220px; transition: border-color 0.15s; }
 input[type="text"]:focus { border-color: var(--ink); }
 select { font-family: var(--mono); font-size: 0.85rem; padding: 0.5rem 0.85rem; border: 1px solid var(--rule); background: white; outline: none; cursor: pointer; }
 .download-btn { padding: 0.5rem 1.1rem; background: var(--accent); color: white; font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border: none; transition: opacity 0.15s; }
 .download-btn:hover { opacity: 0.85; }
+.clipboard-btn { background: #6c757d; }
+.clipboard-btn:hover { opacity: 0.85; }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--rule); }
 table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 0.9rem; }
