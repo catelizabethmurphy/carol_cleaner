@@ -157,9 +157,9 @@ function buildAllData() {
 
 // ── Columns ───────────────────────────────────────────────────────────────────
 const PRIORITY_COLS=['srid','reportno','mkey','ntsb_no','recipient','recipient_recommendation_open_closed','recipient_recommendation_response_status','recipient_recommendation_date_closed','date_issued','event_date','city','state','recommendation'];
-const SKIP_TABLE=new Set(['_json','abstract','sr_url','srurl','accidentreporturl','accident_report_url']);
+const SKIP_TABLE=new Set(['_json','sr_url','srurl','accidentreporturl','accident_report_url']);
 const LINK_COLS=['sr_url','accident_report_url','srurl','accidentreporturl','rec_letter_url'];
-const SKIP_MODAL=new Set(['recommendation','abstract','srid','recipient',...LINK_COLS]);
+const SKIP_MODAL=new Set(['recommendation','srid','recipient',...LINK_COLS]);
 const BOOL_KEYS=new Set(['hazmat','most_wanted','is_reiterated','nprm','is_multiple_recipient','ismultiplerecipient']);
 const JSON_PRIORITY=['priority','priority_number','hazmat','most_wanted','is_reiterated','times_reiterated','nprm'];
 
@@ -289,7 +289,8 @@ function fieldHtml(k, v) {
   else if (k==='priority') display=makeBadge(s,'priority');
   else if (k==='keywords') display=`<span>${s?s.replace(/</g,'&lt;'):'NA'}</span>`;
   else display=`<span>${s?s.replace(/</g,'&lt;'):'—'}</span>`;
-  return `<div class="modal-field"><div class="modal-field-label">${getColDisplayName(k)}</div><div class="modal-field-value">${display}</div></div>`;
+  const fullWidth=k==='abstract'?' full-width':'';
+  return `<div class="modal-field${fullWidth}"><div class="modal-field-label">${getColDisplayName(k)}</div><div class="modal-field-value">${display}</div></div>`;
 }
 
 function openModal(row) {
@@ -303,6 +304,12 @@ function openModal(row) {
 
   // CSV fields
   const csvKeys=Object.keys(row).filter(k=>!SKIP_MODAL.has(k)&&k!=='_json');
+  // Sort to put abstract first
+  csvKeys.sort((a,b)=>{
+    if(a==='abstract') return -1;
+    if(b==='abstract') return 1;
+    return 0;
+  });
   document.getElementById('modal-grid-csv').innerHTML=csvKeys.map(k=>fieldHtml(k,row[k])).join('');
 
   // JSON enrichment
