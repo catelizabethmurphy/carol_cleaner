@@ -156,12 +156,12 @@ function buildAllData() {
 }
 
 // ── Columns ───────────────────────────────────────────────────────────────────
-const PRIORITY_COLS=['srid','reportno','mkey','ntsb_no','recipient','recipient_recommendation_open_closed','recipient_recommendation_response_status','recipient_recommendation_date_closed','date_issued','event_date','city','state','recommendation'];
-const SKIP_TABLE=new Set(['_json','sr_url','srurl','accidentreporturl','accident_report_url']);
+const PRIORITY_COLS=['srid','mode','recommendationmode','reportno','ntsb_no','ntsbno','mkey','recipient','recommendation','recipient_recommendation_open_closed','recipient_recommendation_response_status','date_issued','dateissued','recipient_recommendation_date_closed','is_multiple_recipient','ismultiplerecipient','abstract','event_date','eventdate','city','state','country','sr_coding_mode','sr_coding_tier_1','sr_coding_tier_2','sr_coding_tier2','sr_url','srurl','accident_report_url','accidentreporturl','rec_letter_url'];
+const SKIP_TABLE=new Set(['_json']);
 const LINK_COLS=['sr_url','accident_report_url','srurl','accidentreporturl','rec_letter_url'];
 const SKIP_MODAL=new Set(['recommendation','srid','recipient',...LINK_COLS]);
 const BOOL_KEYS=new Set(['hazmat','most_wanted','is_reiterated','nprm','is_multiple_recipient','ismultiplerecipient']);
-const JSON_PRIORITY=['priority','priority_number','hazmat','most_wanted','is_reiterated','times_reiterated','nprm'];
+const JSON_PRIORITY=['priority','priority_number','nprm','hazmat','most_wanted','is_reiterated','times_reiterated','keywords','rec_letter_url'];
 
 function getDisplayCols(rows) {
   if (!rows.length) return [];
@@ -173,7 +173,7 @@ function getDisplayCols(rows) {
   let jsonCols=[];
   if (rows.some(r=>r._json)) {
     const jsonKeys=new Set();
-    rows.forEach(r=>{ if(r._json) Object.keys(r._json).forEach(k=>{ if(!LINK_COLS.includes(k)&&k!=='srid') jsonKeys.add(k); }); });
+    rows.forEach(r=>{ if(r._json) Object.keys(r._json).forEach(k=>{ if(k!=='srid') jsonKeys.add(k); }); });
     const jsonPri=JSON_PRIORITY.filter(c=>jsonKeys.has(c));
     const jsonRest=[...jsonKeys].filter(c=>!JSON_PRIORITY.includes(c));
     jsonCols=[...jsonPri,...jsonRest];
@@ -304,10 +304,14 @@ function openModal(row) {
 
   // CSV fields
   const csvKeys=Object.keys(row).filter(k=>!SKIP_MODAL.has(k)&&k!=='_json');
-  // Sort to put abstract first
+  // Sort fields in user-specified order (including field name variations)
+  const fieldOrder=['abstract','mode','recommendationmode','event_date','eventdate','city','state','country','is_multiple_recipient','ismultiplerecipient','recipient_recommendation_open_closed','recipient_recommendation_response_status','date_issued','dateissued','recipient_recommendation_date_closed','reportno','ntsb_no','ntsbno','mkey','sr_coding_mode','sr_coding_tier_1','sr_coding_tier_2','sr_coding_tier2'];
   csvKeys.sort((a,b)=>{
-    if(a==='abstract') return -1;
-    if(b==='abstract') return 1;
+    const aIdx=fieldOrder.indexOf(a);
+    const bIdx=fieldOrder.indexOf(b);
+    if(aIdx!==-1&&bIdx!==-1) return aIdx-bIdx;
+    if(aIdx!==-1) return -1;
+    if(bIdx!==-1) return 1;
     return 0;
   });
   document.getElementById('modal-grid-csv').innerHTML=csvKeys.map(k=>fieldHtml(k,row[k])).join('');
@@ -319,6 +323,16 @@ function openModal(row) {
     let jKeys=Object.keys(json).filter(k=>k!=='srid'&&!LINK_COLS.includes(k));
     // Always include keywords even if not present
     if(!jKeys.includes('keywords')) jKeys.push('keywords');
+    // Sort JSON fields for popup
+    const jsonModalOrder=['priority','priority_number','most_wanted','hazmat','is_reiterated','times_reiterated','nprm','keywords','rec_letter_url'];
+    jKeys.sort((a,b)=>{
+      const aIdx=jsonModalOrder.indexOf(a);
+      const bIdx=jsonModalOrder.indexOf(b);
+      if(aIdx!==-1&&bIdx!==-1) return aIdx-bIdx;
+      if(aIdx!==-1) return -1;
+      if(bIdx!==-1) return 1;
+      return 0;
+    });
     document.getElementById('modal-grid-json').innerHTML=jKeys.map(k=>fieldHtml(k,json[k]!=null?json[k]:'')).join('');
     enrichEl.classList.add('visible');
   } else {
