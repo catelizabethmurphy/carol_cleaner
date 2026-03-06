@@ -208,8 +208,21 @@ function renderTable() {
     th.addEventListener('click',()=>{
       const col=th.dataset.col;
       if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;}
-      filteredData.sort((a,b)=>(a[col]||'').localeCompare(b[col]||'',undefined,{numeric:true})*sortDir);
-      currentPage=1; renderTable();
+      
+      // Save scroll position
+      const tableWrap = document.querySelector('.table-wrap');
+      const scrollPos = tableWrap.scrollTop;
+      
+      filteredData.sort((a,b)=>{
+        const aVal=(a[col]!==undefined && a[col]!=='')?a[col]:(a._json?a._json[col]:'');
+        const bVal=(b[col]!==undefined && b[col]!=='')?b[col]:(b._json?b._json[col]:'');
+        return (aVal||'').toString().localeCompare((bVal||'').toString(),undefined,{numeric:true})*sortDir;
+      });
+      
+      renderTable();
+      
+      // Restore scroll position
+      tableWrap.scrollTop = scrollPos;
     });
   });
 
@@ -274,6 +287,7 @@ function fieldHtml(k, v) {
   else if (k==='recipient_recommendation_response_status') display=makeBadge(s,'other');
   else if (BOOL_KEYS.has(k)) display=makeBadge(s,'bool');
   else if (k==='priority') display=makeBadge(s,'priority');
+  else if (k==='keywords') display=`<span>${s?s.replace(/</g,'&lt;'):'NA'}</span>`;
   else display=`<span>${s?s.replace(/</g,'&lt;'):'—'}</span>`;
   return `<div class="modal-field"><div class="modal-field-label">${getColDisplayName(k)}</div><div class="modal-field-value">${display}</div></div>`;
 }
@@ -295,8 +309,10 @@ function openModal(row) {
   const enrichEl=document.getElementById('modal-enriched');
   const json=row['_json'];
   if (json) {
-    const jKeys=Object.keys(json).filter(k=>k!=='srid'&&!LINK_COLS.includes(k));
-    document.getElementById('modal-grid-json').innerHTML=jKeys.map(k=>fieldHtml(k,json[k])).join('');
+    let jKeys=Object.keys(json).filter(k=>k!=='srid'&&!LINK_COLS.includes(k));
+    // Always include keywords even if not present
+    if(!jKeys.includes('keywords')) jKeys.push('keywords');
+    document.getElementById('modal-grid-json').innerHTML=jKeys.map(k=>fieldHtml(k,json[k]!=null?json[k]:'')).join('');
     enrichEl.classList.add('visible');
   } else {
     enrichEl.classList.remove('visible');
@@ -382,8 +398,10 @@ document.getElementById('download-btn').addEventListener('click',()=>{
     let val=(r[c]!==undefined && r[c]!=='')?r[c]:(r._json?r._json[c]:'');
     return esc(val);
   }).join(','))].join('\n');
+  const now=new Date();
+  const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='clean_rail_safety_recs.csv';
+  a.download=`safety_recs_cleaned_${ts}.csv`;
   a.click();
 });
