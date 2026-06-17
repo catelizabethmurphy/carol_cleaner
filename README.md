@@ -46,7 +46,7 @@ Add supplementary data from CAROL's full JSON export:
 ### Getting CAROL Data
 
 **CSV Export:**
-1. Visit [data.ntsb.gov/carol-main-public/query-builder](https://data.ntsb.gov/carol-main-public/query-builder)
+1. Visit [my.ntsb.gov/home](https://my.ntsb.gov/home)
 2. Build your query and export as CSV
 3. Upload to CAROL Cleaner
 

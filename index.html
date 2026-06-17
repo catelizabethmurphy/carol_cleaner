@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CAROL Cleaner</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&family=PT+Sans+Caption:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="carol_cleaner.css">
 </head>
 <body>
@@ -20,19 +20,17 @@
 <main>
   <div class="upload-row">
     <div class="drop-zone" id="drop-zone-csv">
-      <span class="drop-icon">📋</span>
-      <div class="dz-tag" id="csv-tag">Required</div>
+      <div class="dz-tag" id="csv-tag">Step 1 · required</div>
       <h2>CAROL Summary CSV</h2>
-      <p>Raw CSV data from<br><strong>data.ntsb.gov/carol-main-public/query-builder</strong></p>
+      <p>Raw CSV export from my.ntsb.gov.<br><a class="guide-link" href="#" id="guide-link">How do I download this?</a></p>
       <label class="file-btn" for="file-input-csv">Choose CSV</label>
       <input type="file" id="file-input-csv" accept=".csv">
       <div class="loaded-name" id="csv-loaded-name"></div>
     </div>
-    <div class="drop-zone" id="drop-zone-json">
-      <span class="drop-icon">🔗</span>
-      <div class="dz-tag" id="json-tag">Optional</div>
+    <div class="drop-zone disabled" id="drop-zone-json">
+      <div class="dz-tag" id="json-tag">Step 2 · optional</div>
       <h2>CAROL Full JSON</h2>
-      <p>Complete JSON data with priority, hazmat, most wanted,<br>keywords &amp; rec letter URL to each row</p>
+      <p>Enriches each matching row with priority, hazmat,<br>most wanted, keywords &amp; rec letter URLs.</p>
       <label class="file-btn secondary" for="file-input-json">Choose JSON</label>
       <input type="file" id="file-input-json" accept=".json">
       <div class="loaded-name" id="json-loaded-name"></div>
@@ -40,7 +38,7 @@
   </div>
 
   <div id="log-section">
-    <div class="log-label">Processing log</div>
+    <div class="log-label">What the cleaner did</div>
     <div id="log"></div>
   </div>
 
@@ -62,8 +60,8 @@
         </select>
       </div>
       <div class="table-controls-right">
-        <button class="download-btn" id="download-btn">↓ Download CSV</button>
-        <button class="download-btn clipboard-btn" id="clipboard-btn">📋 Copy to Clipboard</button>
+        <button class="download-btn" id="download-btn">Download CSV</button>
+        <button class="download-btn clipboard-btn" id="clipboard-btn">Copy to clipboard</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -92,7 +90,7 @@
         <div class="modal-srid" id="modal-srid"></div>
         <div class="modal-title" id="modal-recipient"></div>
       </div>
-      <button class="modal-close" id="modal-close">✕ Close</button>
+      <button class="modal-close" id="modal-close">Close</button>
     </div>
     <div class="modal-body">
       <div class="modal-rec-text" id="modal-rec-text"></div>
@@ -106,6 +104,33 @@
       </div>
 
       <div class="modal-links" id="modal-links"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="guide-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-srid">Getting CAROL data</div>
+        <div class="modal-title">How to download your files</div>
+      </div>
+      <button class="modal-close" id="guide-close">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section-label">Summary CSV — required</div>
+      <ol class="guide-list">
+        <li>Open the new <a href="https://my.ntsb.gov/home" target="_blank" rel="noopener">CAROL site</a>.</li>
+        <li>Set the record type to <strong>Safety Recommendations</strong> and build your query (filter by mode, date, recipient, and so on).</li>
+        <li>Run the query, then use the <strong>Export</strong> / <strong>Download</strong> option and choose <strong>CSV</strong>.</li>
+        <li>Drop the file into the box, or use <strong>Choose files</strong>.</li>
+      </ol>
+      <div class="modal-section-label">Full JSON — optional</div>
+      <ol class="guide-list">
+        <li>Request the full recommendation records from the CAROL API as a JSON array.</li>
+        <li>Keep each record's <code>srid</code> field — that's how rows are matched to the CSV.</li>
+        <li>Save it as a <code>.json</code> file and drop it into the same box.</li>
+      </ol>
     </div>
   </div>
 </div>

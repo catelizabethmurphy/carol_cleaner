@@ -146,7 +146,7 @@ function joinData(csvRows, jMap) {
 
 // ── Build / rebuild ───────────────────────────────────────────────────────────
 function buildAllData() {
-  if (!csvData) return;
+  if (!csvData) return;                          // CSV is required; JSON only enriches it
   document.getElementById('log-section').style.display='block';
   allData=joinData(csvData,jsonMap);
   filteredData=[...allData];
@@ -346,7 +346,7 @@ function openModal(row) {
   document.getElementById('modal-links').innerHTML=allLinks
     .filter(({v})=>{if(seen.has(v))return false;seen.add(v);return true;})
     .map(({k,v})=>{
-      const label=k.includes('accident')?'↗ Investigation Report':k.includes('rec_letter')?'↗ Rec Letter (PDF)':'↗ NTSB Safety Rec';
+      const label=k.includes('accident')?'Investigation Report':k.includes('rec_letter')?'Rec Letter (PDF)':'NTSB Safety Rec';
       return `<a class="modal-link" href="${v}" target="_blank" rel="noopener">${label}</a>`;
     }).join('');
 
@@ -360,7 +360,19 @@ function closeModal() {
 }
 document.getElementById('modal-close').addEventListener('click',closeModal);
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── Instructions popup ────────────────────────────────────────────────────────
+const guideOverlay=document.getElementById('guide-overlay');
+function closeGuide(){ guideOverlay.classList.remove('open'); document.body.style.overflow=''; }
+document.getElementById('guide-link').addEventListener('click',e=>{
+  e.preventDefault();
+  guideOverlay.classList.add('open');
+  document.body.style.overflow='hidden';
+});
+document.getElementById('guide-close').addEventListener('click',closeGuide);
+guideOverlay.addEventListener('click',e=>{if(e.target===e.currentTarget)closeGuide();});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeGuide();}});
 
 // ── File handlers ─────────────────────────────────────────────────────────────
 function handleCSV(file) {
@@ -371,15 +383,16 @@ function handleCSV(file) {
     if (!cleaned) return;
     csvData=cleaned;
     document.getElementById('drop-zone-csv').classList.add('loaded');
-    document.getElementById('csv-tag').textContent='✓ Loaded';
-    document.getElementById('csv-loaded-name').textContent='✓ '+file.name;
+    document.getElementById('csv-tag').textContent='Loaded';
+    document.getElementById('csv-loaded-name').textContent=file.name;
+    document.getElementById('drop-zone-json').classList.remove('disabled'); // enrichment now available
     buildAllData();
   };
   reader.readAsText(file);
 }
 
 function handleJSON(file) {
-  if (!file) return;
+  if (!file || !csvData) return;          // CSV must be loaded first; JSON only enriches it
   const reader=new FileReader();
   reader.onload=e=>{
     document.getElementById('log-section').style.display='block';
@@ -387,10 +400,9 @@ function handleJSON(file) {
     if (!map) return;
     jsonMap=map;
     document.getElementById('drop-zone-json').classList.add('loaded');
-    document.getElementById('json-tag').textContent='✓ Loaded';
-    document.getElementById('json-loaded-name').textContent='✓ '+file.name;
-    if (csvData) buildAllData();
-    else log('  Waiting for CSV before joining…','info');
+    document.getElementById('json-tag').textContent='Loaded';
+    document.getElementById('json-loaded-name').textContent=file.name;
+    buildAllData();
   };
   reader.readAsText(file);
 }
@@ -443,7 +455,7 @@ document.getElementById('clipboard-btn').addEventListener('click',async ()=>{
   // Copy to clipboard
   try {
     await navigator.clipboard.writeText(tsv);
-    btn.textContent='✓ Copied!';
+    btn.textContent='Copied';
     btn.style.background='#495057';
     setTimeout(()=>{
       btn.textContent=orig;
